@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
 import { DBService } from "../../DB/db.service";
 import { AuthSession, PasswordResetToken, User } from "../../DB/models";
-import { NotImplementedException } from "../../utils/errors/app.error";
+import { ConflictException, NotImplementedException } from "../../utils/errors/app.error";
+import { successResponse } from "../../utils/response/success.response";
+import { hashPassword } from "../../utils/security/hash";
+import type { SignupDTO } from "./auth.validation";
 
 class AuthService {
   private readonly userModel = new DBService(User);
@@ -9,9 +12,34 @@ class AuthService {
   private readonly resetTokenModel = new DBService(PasswordResetToken);
 
   // POST /auth/signup
-  // Hash the password; insert user (409 on duplicate email/username comes from the error handler).
+  // Check for a taken email/username (friendly 409), hash the password, insert the user.
+  // The unique indexes still guard against races: a concurrent duplicate insert
+  // surfaces as ER_DUP_ENTRY, which the global error handler turns into a 409.
   signup = async (req: Request, res: Response): Promise<Response> => {
-    throw new NotImplementedException();
+    const { username, email, password, displayName } = req.body as SignupDTO;
+
+    // withDeleted: soft-deleted users still occupy the unique email/username in MySQL.
+    const existing = await this.userModel.findOne({
+      where: [{ email }, { username }],
+      select: { id: true, email: true },
+      withDeleted: true,
+    });
+    if (existing) {
+      throw new ConflictException(
+        existing.email === email ? "Email is already registered" : "Username is already taken",
+      );
+    }
+
+    const user = await this.userModel.create({
+      username,
+      email,
+      passwordHash: await hashPassword(password),
+      displayName: displayName ?? null,
+    });
+
+    // save() returns the entity we passed in, so strip the hash before responding.
+    const { passwordHash: _omit, ...safeUser } = user;
+    return successResponse(res, { status: 201, message: "Account created", data: { user: safeUser } });
   };
 
   // POST /auth/login
