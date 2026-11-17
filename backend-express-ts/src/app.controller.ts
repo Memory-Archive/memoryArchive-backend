@@ -1,4 +1,6 @@
 import express, { type Express } from "express";
+import helmet from "helmet";
+import cors from "cors";
 import { env } from "./config/env";
 import { connectDB } from "./DB/DBconnection";
 import { globalErrorHandler, notFoundHandler } from "./middleware/error.middleware";
@@ -21,6 +23,8 @@ import mediaComparisonRouter from "./modules/mediaComparisons/mediaComparison.co
 export const createApp = (): Express => {
   const app = express();
 
+  app.use(helmet());
+  app.use(cors({ origin: env.CORS_ORIGIN }));
   app.use(express.json({ limit: "1mb" }));
 
   app.get("/health", (_req, res) => {
