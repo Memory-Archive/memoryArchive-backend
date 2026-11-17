@@ -16,4 +16,15 @@ export const env = {
   DB_USERNAME: required("DB_USERNAME"),
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: required("DB_NAME"),
+
+  JWT_ACCESS_SECRET: required("JWT_ACCESS_SECRET"),
+  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN ?? "15m",
+  // Refresh tokens are opaque random strings (hashed in auth_sessions), so no signing secret is needed.
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
+
+  CORS_ORIGIN: required("CORS_ORIGIN"),
 } as const;
+
+if (env.JWT_ACCESS_SECRET.length < 32) {
+  throw new Error("JWT_ACCESS_SECRET must be at least 32 characters");
+}
