@@ -16,4 +16,8 @@ export const env = {
   DB_USERNAME: required("DB_USERNAME"),
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: required("DB_NAME"),
+  JWT_ACCESS_SECRET: required("JWT_ACCESS_SECRET"),
+  // Durations like "30s", "15m", "12h", "7d" (parsed in utils/security/token.ts).
+  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
 } as const;
