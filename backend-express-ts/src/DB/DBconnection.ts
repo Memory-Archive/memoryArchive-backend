@@ -11,6 +11,8 @@ export const AppDataSource = new DataSource({
   password: env.DB_PASSWORD,
   database: env.DB_NAME,
   charset: "utf8mb4_unicode_ci",
+  // Store and read datetimes as UTC so token/session expiry comparisons are correct.
+  timezone: "Z",
   entities,
   // The schema (including triggers, generated columns and CHECK constraints)
   // is owned by schema.mysql.sql. Never let TypeORM alter it.
