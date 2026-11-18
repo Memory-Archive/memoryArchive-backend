@@ -18,9 +18,11 @@ export const env = {
   DB_NAME: required("DB_NAME"),
 
   JWT_ACCESS_SECRET: required("JWT_ACCESS_SECRET"),
-  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN ?? "15m",
+  // Durations like "30s", "15m", "12h", "7d" (parsed in utils/security/token.ts).
+  // `||` (not `??`) so a blank value in .env falls back to the default.
+  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
   // Refresh tokens are opaque random strings (hashed in auth_sessions), so no signing secret is needed.
-  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
 
   CORS_ORIGIN: required("CORS_ORIGIN"),
 } as const;
