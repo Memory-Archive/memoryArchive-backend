@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { IsNull } from "typeorm";
 import { DBService } from "../../DB/db.service";
 import { AuthSession, PasswordResetToken, User } from "../../DB/models";
 import {
@@ -16,7 +17,7 @@ import {
   hashToken,
   signAccessToken,
 } from "../../utils/security/token";
-import type { LoginDTO, SignupDTO } from "./auth.validation";
+import type { LoginDTO, RefreshTokenDTO, SignupDTO } from "./auth.validation";
 
 class AuthService {
   private readonly userModel = new DBService(User);
@@ -68,10 +69,8 @@ class AuthService {
       .where("user.email = :email", { email })
       .getOne();
 
-    // Always run scrypt, even for unknown emails, so response time doesn't reveal
-    // whether an email is registered. Same message for both failure cases.
-    const passwordOk = await verifyPassword(password, user?.passwordHash ?? (await this.getDummyHash()));
-    if (!user || !passwordOk) {
+    // Same message for both failure cases.
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
       throw new UnauthorizedException("Invalid email or password");
     }
 
@@ -119,21 +118,53 @@ class AuthService {
     };
   };
 
-  // A real scrypt hash of a random password, computed once and reused for unknown-email logins.
-  private dummyHash?: Promise<string>;
-  private getDummyHash = (): Promise<string> =>
-    (this.dummyHash ??= hashPassword(generateRefreshToken()));
-
   // POST /auth/refresh
   // Hash the incoming token, find a session that is not revoked and not expired,
   // rotate: revoke it and issue a new session + tokens.
   refresh = async (req: Request, res: Response): Promise<Response> => {
-    throw new NotImplementedException();
+    const { refreshToken } = req.body as RefreshTokenDTO;
+    const invalid = () => new UnauthorizedException("Invalid or expired refresh token");
+
+    // Only the hash is stored, so look the session up by hashing what the client sent.
+    const session = await this.sessionModel.findOneBy({ refreshTokenHash: hashToken(refreshToken) });
+    if (!session) throw invalid();
+
+    // A revoked token being presented again means it was used twice: either the
+    // client or an attacker holds a stale copy. We can't tell which, so end every
+    // session for that user and make them log in again.
+    if (session.revokedAt) {
+      await this.sessionModel.update({ userId: session.userId, revokedAt: IsNull() }, { revokedAt: new Date() });
+      throw invalid();
+    }
+
+    if (session.expiresAt <= new Date()) throw invalid();
+
+    // Claim the token atomically: only one request can flip revokedAt from NULL,
+    // so two concurrent refreshes with the same token can't both succeed.
+    const claimed = await this.sessionModel.update({ id: session.id, revokedAt: IsNull() }, { revokedAt: new Date() });
+    if (claimed === 0) throw invalid();
+
+    // The account may have been disabled or deleted since login (soft-deleted users are excluded here).
+    const user = await this.userModel.findOneBy({ id: session.userId });
+    if (!user || user.status !== "active") throw invalid();
+
+    const tokens = await this.openSession(req, user.id, session.deviceName);
+    return successResponse(res, { message: "Token refreshed", data: tokens });
   };
 
-  // POST /auth/logout  - set revokedAt on the session matching the refresh token.
+  // POST /auth/logout
+  // Revoke the session that owns this refresh token. Idempotent: an unknown, expired
+  // or already-revoked token still gets 200, since the end state (logged out) is the same.
   logout = async (req: Request, res: Response): Promise<Response> => {
-    throw new NotImplementedException();
+    const { refreshToken } = req.body as RefreshTokenDTO;
+
+    // revokedAt IS NULL keeps the original revocation time on repeat logouts.
+    await this.sessionModel.update(
+      { refreshTokenHash: hashToken(refreshToken), revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+
+    return successResponse(res, { message: "Logged out" });
   };
 
   // POST /auth/forgot-password
