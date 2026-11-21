@@ -1,13 +1,19 @@
 import type { NextFunction, Request, Response } from "express";
-import { NotImplementedException, UnauthorizedException } from "../utils/errors/app.error";
+import { DBService } from "../DB/db.service";
+import { AuthSession, User } from "../DB/models";
+import { UnauthorizedException } from "../utils/errors/app.error";
+import { verifyAccessToken } from "../utils/security/token";
+
+const sessionModel = new DBService(AuthSession);
+const userModel = new DBService(User);
 
 /**
- * Protects a route: must set `req.user` (and optionally `req.authSession`).
+ * Protects a route: requires `Authorization: Bearer <access token>` and sets
+ * `req.user` and `req.authSession` for the handlers after it.
  *
- * TODO (auth module):
- *  1. Read the access token from `Authorization: Bearer <token>`.
- *  2. Verify it (e.g. jsonwebtoken) and extract the user id / session id.
- *  3. Load the user (status must be "active", not soft-deleted) and set `req.user`.
+ * The JWT signature only proves the token was issued by us and hasn't expired.
+ * The session lookup is what makes logout (and refresh-token reuse detection)
+ * take effect immediately instead of after the access token's TTL.
  */
 export const authentication = () => {
   return async (req: Request, _res: Response, next: NextFunction) => {
@@ -16,10 +22,23 @@ export const authentication = () => {
       throw new UnauthorizedException("Missing bearer token");
     }
 
-    throw new NotImplementedException("Authentication is not implemented yet");
+    // Throws 401 on a bad signature, wrong algorithm, expiry or malformed payload.
+    const { sub: userId, sid } = verifyAccessToken(header.slice("Bearer ".length).trim());
 
-    // req.user = user;
-    // next();
+    const session = await sessionModel.findOneBy({ id: sid });
+    if (!session || session.userId !== userId || session.revokedAt || session.expiresAt <= new Date()) {
+      throw new UnauthorizedException("Session is no longer valid");
+    }
+
+    // findOneBy skips soft-deleted users, so a deleted account fails here too.
+    const user = await userModel.findOneBy({ id: userId });
+    if (!user || user.status !== "active") {
+      throw new UnauthorizedException("Session is no longer valid");
+    }
+
+    req.user = user;
+    req.authSession = session;
+    next();
   };
 };
 
