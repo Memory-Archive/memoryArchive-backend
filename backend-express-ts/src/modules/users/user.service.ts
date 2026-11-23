@@ -3,7 +3,7 @@ import { Not } from "typeorm";
 import { DBService } from "../../DB/db.service";
 import { AuthSession, User } from "../../DB/models";
 import { currentUserId } from "../../middleware/authentication.middleware";
-import { ConflictException, NotImplementedException, UnauthorizedException } from "../../utils/errors/app.error";
+import { ConflictException, NotFoundException, NotImplementedException, UnauthorizedException } from "../../utils/errors/app.error";
 import { successResponse } from "../../utils/response/success.response";
 import type { UpdateProfileDTO } from "./user.validation";
 
@@ -67,8 +67,19 @@ class UserService {
   };
 
   // GET /users/:userId  - public profile (username, displayName, bio only).
+  // `select` limits the query itself to public columns, so private ones (email, status,
+  // lastLoginAt...) are never loaded and can't leak if the response shape changes later.
+  // Disabled and soft-deleted users get the same 404 as ids that never existed.
   getPublicProfile = async (req: Request, res: Response): Promise<Response> => {
-    throw new NotImplementedException();
+    const { userId } = req.params as { userId: string };
+
+    const user = await this.userModel.findOne({
+      where: { id: userId, status: "active" },
+      select: { id: true, username: true, displayName: true, bio: true },
+    });
+    if (!user) throw new NotFoundException("User not found");
+
+    return successResponse(res, { data: { user } });
   };
 }
 
