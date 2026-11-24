@@ -92,9 +92,6 @@ class PlaceService {
   };
 
   // GET /places/:placeId
-  // Places are shared reference data, so anyone logged in can read one. If this ever
-  // returns memories or saved info for the place, include ONLY the caller's own
-  // (plus their own saved_places.isFavourite). Never other users' or friends' data here.
   getById = async (req: Request, res: Response): Promise<Response> => {
     const { placeId } = req.params as { placeId: string };
 
