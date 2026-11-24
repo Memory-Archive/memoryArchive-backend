@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
 import { DBService } from "../../DB/db.service";
 import { CollectionMember, CollectionMemory, Memory, Place, Tag } from "../../DB/models";
+import { currentUserId } from "../../middleware/authentication.middleware";
 import { NotImplementedException } from "../../utils/errors/app.error";
+import { successResponse } from "../../utils/response/success.response";
+import type { ListMemoriesQuery } from "./memory.validation";
 
 /**
  * PRIVACY / WHO CAN SEE A MEMORY
@@ -44,9 +47,68 @@ class MemoryService {
   // Filters to add: ?favourite=true (is_favourite = 1), ?visibility=private|friends.
   // Always add deleted_at IS NULL.
   // Full-text: MATCH(title, description) AGAINST (:q IN NATURAL LANGUAGE MODE) via query builder.
-  // Friends' memories do NOT go here; they get their own endpoints (see bottom of class).
   list = async (req: Request, res: Response): Promise<Response> => {
-    throw new NotImplementedException();
+    const userId = currentUserId(req);
+    const { page, limit, from, to, placeId, tagId, q, sort } = req.query as unknown as ListMemoriesQuery;
+
+    // Query builders skip soft-deleted rows (deleted_at IS NULL) by default.
+    const qb = this.memoryModel.repo
+      .createQueryBuilder("m")
+      .leftJoinAndSelect("m.place", "place")
+      .where("m.userId = :userId", { userId });
+
+    if (from) qb.andWhere("m.memoryDate >= :from", { from });
+    if (to) qb.andWhere("m.memoryDate <= :to", { to });
+    if (placeId) qb.andWhere("m.placeId = :placeId", { placeId });
+    // EXISTS rather than a JOIN, so a memory never appears twice and the page count stays right.
+    if (tagId) {
+      qb.andWhere("EXISTS (SELECT 1 FROM memory_tags mt WHERE mt.memory_id = m.id AND mt.tag_id = :tagId)", { tagId });
+    }
+    // Uses the memories_search_idx FULLTEXT index.
+    if (q) qb.andWhere("MATCH(m.title, m.description) AGAINST (:q IN NATURAL LANGUAGE MODE)", { q });
+
+    // Timeline order. id is the final tie-breaker so pages never overlap or skip rows.
+    // In MySQL, NULLs sort last under DESC and first under ASC, so memories without a time
+    // come after timed ones on the same day when newest-first.
+    const dir = sort === "oldest" ? "ASC" : "DESC";
+    qb.orderBy("m.memoryDate", dir)
+      .addOrderBy("m.memoryTime", dir)
+      .addOrderBy("m.createdAt", dir)
+      .addOrderBy("m.id", dir);
+
+    // offset/limit (plain SQL LIMIT) is safe because the only join is many-to-one,
+    // so it can't multiply rows.
+    const [items, total] = await qb
+      .offset((page - 1) * limit)
+      .limit(limit)
+      .getManyAndCount();
+
+    // Tags are many-to-many, so they're loaded for the whole page in one extra query
+    // instead of being joined above (which would break the LIMIT).
+    const tagsByMemory = new Map<string, Tag[]>();
+    if (items.length) {
+      const tags = await this.tagModel.repo
+        .createQueryBuilder("t")
+        .innerJoin("t.memories", "tm")
+        .addSelect("tm.id")
+        .where("tm.id IN (:...ids)", { ids: items.map((m) => m.id) })
+        .orderBy("t.name", "ASC")
+        .getMany();
+      for (const { memories, ...tag } of tags) {
+        for (const { id } of memories) {
+          const list = tagsByMemory.get(id) ?? [];
+          list.push(tag as Tag);
+          tagsByMemory.set(id, list);
+        }
+      }
+    }
+
+    return successResponse(res, {
+      data: {
+        items: items.map((m) => ({ ...m, tags: tagsByMemory.get(m.id) ?? [] })),
+        meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      },
+    });
   };
 
   // POST /memories  - validate placeId exists and tagIds belong to the user; create in a transaction.
