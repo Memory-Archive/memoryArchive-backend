@@ -12,6 +12,7 @@ import {
   UpdateDateColumn,
   type Relation,
 } from "typeorm";
+import type { MemoryVisibility } from "../../common/enums";
 import { User } from "./user.model";
 import { Place } from "./place.model";
 import { MediaAsset } from "./mediaAsset.model";
@@ -54,6 +55,14 @@ export class Memory {
 
   @Column({ name: "spotify_track_name", type: "varchar", length: 255, nullable: true })
   spotifyTrackName!: string | null;
+
+  /** Owner-only star. Only the memory's owner can favourite it. */
+  @Column({ name: "is_favourite", type: "boolean", default: false })
+  isFavourite!: boolean;
+
+  /** 'private' = owner only, 'friends' = owner + friends. There is no public option. */
+  @Column({ type: "varchar", length: 20, default: "private" })
+  visibility!: MemoryVisibility;
 
   @CreateDateColumn({ name: "created_at", type: "datetime" })
   createdAt!: Date;

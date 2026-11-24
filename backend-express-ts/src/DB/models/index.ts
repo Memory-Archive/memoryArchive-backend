@@ -1,6 +1,7 @@
 import { User } from "./user.model";
 import { AuthSession } from "./authSession.model";
 import { PasswordResetToken } from "./passwordResetToken.model";
+import { Friendship } from "./friendship.model";
 import { Place } from "./place.model";
 import { Memory } from "./memory.model";
 import { MediaAsset } from "./mediaAsset.model";
@@ -24,6 +25,7 @@ export {
   User,
   AuthSession,
   PasswordResetToken,
+  Friendship,
   Place,
   Memory,
   MediaAsset,
@@ -46,6 +48,7 @@ export const entities = [
   User,
   AuthSession,
   PasswordResetToken,
+  Friendship,
   Place,
   Memory,
   MediaAsset,

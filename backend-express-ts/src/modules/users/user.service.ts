@@ -7,6 +7,20 @@ import { ConflictException, NotFoundException, NotImplementedException, Unauthor
 import { successResponse } from "../../utils/response/success.response";
 import type { UpdateProfileDTO } from "./user.validation";
 
+/**
+ * TODO (after the friendships table exists) - profile changes for friends:
+ *   - GET /users/:userId: add `friendshipStatus` for the viewer
+ *     ('none' | 'request_sent' | 'request_received' | 'friends') so the app knows
+ *     which button to show (Add / Cancel / Accept / Unfriend).
+ *   - GET /users/:userId: add `friendsCount` (and `memoriesCount` of memories the
+ *     viewer is allowed to see). Never expose private memories or counts of them.
+ *   - GET /users/me: add `friendsCount` and pending friend requests count.
+ *   - New: GET /users/search?q=username so people can find each other to add as friends.
+ *   - Privacy reminder: no public content. A non-friend only sees username,
+ *     displayName and bio (what getPublicProfile already returns).
+ * Friend requests / accept / remove belong in a new `friends` module, not here.
+ * Everywhere friends are listed: hide users that are disabled or soft-deleted.
+ */
 class UserService {
   private readonly userModel = new DBService(User);
   private readonly sessionModel = new DBService(AuthSession);
@@ -52,6 +66,9 @@ class UserService {
   };
 
   // DELETE /users/me  - soft delete (sets deleted_at) and revoke all sessions.
+  // FRIENDS: friendships only CASCADE on a hard delete, so a soft-deleted user's rows stay.
+  // In the same transaction, delete all friendships where they are requester or addressee,
+  // otherwise they keep showing up in other people's friend lists and pending requests.
   deleteMe = async (req: Request, res: Response): Promise<Response> => {
     throw new NotImplementedException();
   };
@@ -67,6 +84,7 @@ class UserService {
   };
 
   // GET /users/:userId  - public profile (username, displayName, bio only).
+  // TODO (friends): add friendshipStatus + counts, see the TODO above the class.
   // `select` limits the query itself to public columns, so private ones (email, status,
   // lastLoginAt...) are never loaded and can't leak if the response shape changes later.
   // Disabled and soft-deleted users get the same 404 as ids that never existed.

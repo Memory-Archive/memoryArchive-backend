@@ -8,6 +8,13 @@ import { NotImplementedException } from "../../utils/errors/app.error";
  *  - owner (collections.user_id): everything
  *  - contributor: view + add/remove memories they added
  *  - viewer: view only
+ *
+ * PRIVACY: a collection is explicit sharing, separate from memory visibility.
+ * Adding a 'private' memory to a shared collection makes it visible to that
+ * collection's members (only them). That's intended, but the owner should know:
+ * consider a warning in the app when adding a private memory to a shared collection.
+ * Members never see the owner's favourites (is_favourite) or tags.
+ * Decide: may only FRIENDS be invited/added as members? (see invitation.service.ts)
  */
 class CollectionService {
   private readonly collectionModel = new DBService(Collection);

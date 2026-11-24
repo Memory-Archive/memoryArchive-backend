@@ -13,6 +13,11 @@ class MediaComparisonService {
   };
 
   // POST /media-comparisons  - both media must exist, be photos, and be accessible to the user.
+  // "Accessible" = passes the shared memory read check, which now includes friends'
+  // 'friends' memories. Decide: allow comparing with a friend's photo, or own photos only?
+  // If friends' photos are allowed, a later unfriend/private switch must hide that side
+  // when the comparison is read (re-check access on GET, don't trust the stored row).
+  // Comparisons themselves are private to their creator.
   create = async (req: Request, res: Response): Promise<Response> => {
     throw new NotImplementedException();
   };

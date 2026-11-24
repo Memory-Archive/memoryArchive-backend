@@ -7,6 +7,11 @@ class MediaService {
   private readonly mediaModel = new DBService(MediaAsset);
   private readonly memoryModel = new DBService(Memory);
 
+  // PRIVACY: reading media uses the shared memory read check (owner / friend when
+  // visibility = 'friends' / collection member). Changing media is owner only.
+  // Files in storage must not be publicly reachable: serve them through short-lived
+  // signed URLs generated AFTER the read check, or a private memory's photos leak.
+
   // GET /memories/:memoryId/media  - ordered by sortOrder (needs read access to the memory).
   listForMemory = async (req: Request, res: Response): Promise<Response> => {
     throw new NotImplementedException();

@@ -8,6 +8,13 @@ const notificationModel = new DBService(Notification);
 /**
  * Create a notification from any other service, e.g.
  *   await notify(memory.userId, "comment.created", { memoryId, commentId, byUserId });
+ *
+ * TODO new types for the friends module:
+ *   "friend.requested" -> to the addressee, payload { friendshipId, byUserId }
+ *   "friend.accepted"  -> to the requester, payload { friendshipId, byUserId }
+ * When a request is cancelled/declined (row deleted), delete or ignore the matching
+ * "friend.requested" notification so the app doesn't show a dead Accept button.
+ * Don't notify friends when a memory is created (no feed spam) unless decided later.
  */
 export const notify = (userId: string, notificationType: string, payload: Record<string, unknown> = {}) => {
   return notificationModel.create({ userId, notificationType, payload });
