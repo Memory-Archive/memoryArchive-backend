@@ -3,6 +3,12 @@ import { DBService } from "../../DB/db.service";
 import { Place, SavedPlace } from "../../DB/models";
 import { NotImplementedException } from "../../utils/errors/app.error";
 
+/**
+ * TODO (DB already has it): saved_places.is_favourite (entity field `isFavourite`, default false).
+ *   - create / update: accept `isFavourite: boolean` (add it to the validators too).
+ *   - list: support `?favourite=true` to return only the user's favourite places.
+ * Saved places are always private to their owner; friends never see them.
+ */
 class SavedPlaceService {
   private readonly savedPlaceModel = new DBService(SavedPlace);
   private readonly placeModel = new DBService(Place);

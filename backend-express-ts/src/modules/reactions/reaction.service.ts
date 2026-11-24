@@ -7,6 +7,11 @@ class ReactionService {
   private readonly reactionModel = new DBService(Reaction);
   private readonly memoryModel = new DBService(Memory);
 
+  // PRIVACY: same shared memory read check as comments (owner / friend + 'friends' /
+  // collection member), 404 otherwise. Friends can react to memories they can see.
+  // Reactions are public to whoever can see the memory; favourites are NOT (owner-only
+  // `memories.is_favourite`, never expose it here).
+
   // GET /memories/:memoryId/reactions  - counts per type + the current user's reaction.
   list = async (req: Request, res: Response): Promise<Response> => {
     throw new NotImplementedException();

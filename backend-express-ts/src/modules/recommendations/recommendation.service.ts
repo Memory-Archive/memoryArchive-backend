@@ -10,6 +10,9 @@ class RecommendationService {
 
   // GET /recommendations?lat=&lng=  - query a places provider; down-rank places with low
   // feedback ratings and places already visited / saved.
+  // Favourites are a strong signal: saved_places.is_favourite and the places of
+  // memories with is_favourite = 1 show what the user likes. Use only the user's
+  // OWN data; never use friends' memories or saved places here.
   list = async (req: Request, res: Response): Promise<Response> => {
     throw new NotImplementedException();
   };

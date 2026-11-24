@@ -36,6 +36,9 @@ export class SavedPlace {
   @Column({ type: "varchar", length: 20, default: "planned" })
   status!: SavedPlaceStatus;
 
+  @Column({ name: "is_favourite", type: "boolean", default: false })
+  isFavourite!: boolean;
+
   @CreateDateColumn({ name: "created_at", type: "datetime" })
   createdAt!: Date;
 

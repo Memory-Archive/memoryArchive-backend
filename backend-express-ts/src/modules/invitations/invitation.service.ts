@@ -9,6 +9,12 @@ class InvitationService {
   private readonly memberModel = new DBService(CollectionMember);
   private readonly userModel = new DBService(User);
 
+  // FRIENDS (decide before building): the app has no public content, so should
+  // collection invites be limited to the owner's friends (accepted friendship)?
+  // If yes: invite by userId only, check friendship, drop invite-by-email for strangers.
+  // If no: keep email invites, but the invitee only ever sees this collection,
+  // never the owner's other memories, unless they also become friends.
+
   // ---- Owner side: /collections/:collectionId/invitations ----
 
   // GET  - all invitations for the collection (owner only).
