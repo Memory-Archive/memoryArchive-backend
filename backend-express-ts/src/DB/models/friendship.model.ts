@@ -17,17 +17,7 @@ import { User } from "./user.model";
  *
  * "Friends of X" = rows with status 'accepted' AND (requester_id = X OR addressee_id = X).
  *
- * TODO (API, `friends` module, not created yet):
- *   GET    /friends                      - my friends (accepted), paginated
- *   GET    /friends/requests?direction=incoming|outgoing - pending requests
- *   POST   /friends/requests             - { userId } send a request (404 if user
- *                                          missing/disabled, 400 if self, 409 if exists).
- *                                          If THEY already asked ME, accept instead.
- *   POST   /friends/requests/:id/accept  - addressee only; set status, responded_at
- *   DELETE /friends/requests/:id         - addressee declines OR requester cancels
- *   DELETE /friends/:userId              - unfriend (either side)
- *   Send a notification on request and on accept ('friend.requested', 'friend.accepted').
- *   Not planned yet: blocking users.
+ * API: src/modules/friends (friend.service.ts describes each endpoint).
  */
 @Entity({ name: "friendships" })
 export class Friendship {
