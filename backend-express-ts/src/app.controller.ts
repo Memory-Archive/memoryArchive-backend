@@ -19,6 +19,7 @@ import notificationRouter from "./modules/notifications/notification.controller"
 import activityLogRouter from "./modules/activityLogs/activityLog.controller";
 import recommendationRouter from "./modules/recommendations/recommendation.controller";
 import mediaComparisonRouter from "./modules/mediaComparisons/mediaComparison.controller";
+import friendRouter from "./modules/friends/friend.controller";
 
 export const createApp = (): Express => {
   const app = express();
@@ -45,6 +46,7 @@ export const createApp = (): Express => {
   app.use("/activity-logs", activityLogRouter);
   app.use("/recommendations", recommendationRouter);
   app.use("/media-comparisons", mediaComparisonRouter);
+  app.use("/friends", friendRouter);
 
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
