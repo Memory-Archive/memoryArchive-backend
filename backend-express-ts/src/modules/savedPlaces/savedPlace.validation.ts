@@ -5,6 +5,10 @@ import { generalFields, idParams, paginationQuery } from "../../common/validatio
 export const listSavedPlaces = {
   query: paginationQuery.extend({
     status: z.enum(SAVED_PLACE_STATUSES).optional(),
+    favourite: z
+      .enum(["true", "false"])
+      .transform((v) => v === "true")
+      .optional(),
   }),
 };
 
@@ -14,6 +18,7 @@ export const createSavedPlace = {
     notes: z.string().trim().max(2000).nullish(),
     targetDate: generalFields.date.nullish(),
     status: z.enum(SAVED_PLACE_STATUSES).default("planned"),
+    isFavourite: z.boolean().default(false),
   }),
 };
 
@@ -24,6 +29,7 @@ export const updateSavedPlace = {
       notes: z.string().trim().max(2000).nullable(),
       targetDate: generalFields.date.nullable(),
       status: z.enum(SAVED_PLACE_STATUSES),
+      isFavourite: z.boolean(),
     })
     .partial()
     .refine((b) => Object.keys(b).length > 0, "Provide at least one field to update"),
